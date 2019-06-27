@@ -1147,7 +1147,7 @@ namespace BuildXL.Scheduler
 
             // Pips configured to disable cache lookup must be set to being perpetually dirty to ensure incremental scheduling
             // gets misses
-            if (pip.DisableCacheLookup)
+            if (pip.DisableCacheLookup || IsProcessRunningIncrementalTool(environment, pip))
             {
                 processExecutionResult.MustBeConsideredPerpetuallyDirty = true;
             }
@@ -1837,6 +1837,13 @@ namespace BuildXL.Scheduler
                     // No sense in going into the strong fingerprint lookup if cache lookup is disabled.
                     pipCacheMiss.Value.CacheMissType = PipCacheMissType.MissForProcessConfiguredUncacheable;
                     Logger.Log.ScheduleProcessConfiguredUncacheable(operationContext, description);
+                    refLocality = null;
+                }
+                else if (cacheableProcess.RunIncrementalTool())
+                {
+                    // No sense in going into the strong fingerprint lookup if incrementality should be relinquished to the executed tool.
+                    pipCacheMiss.Value.CacheMissType = PipCacheMissType.MissForRunningIncrementalTool;
+                    Logger.Log.ScheduleProcessRunIncrementalTool(operationContext, description);
                     refLocality = null;
                 }
                 else
@@ -4090,6 +4097,14 @@ namespace BuildXL.Scheduler
             return PipArtifacts.IsPreservedOutputByPip(process, declaredArtifactPath, environment.Context.PathTable); 
         }
 
+        private static bool IsProcessRunningIncrementalTool(IPipExecutionEnvironment environment, Process process)
+        {
+            Contract.Requires(environment != null);
+            Contract.Requires(process != null);
+
+            return process.IncrementalTool && IsProcessPreservingOutputs(environment, process);
+        }
+
         private static bool IsRewriteOutputFile(IPipExecutionEnvironment environment, FileArtifact file)
         {
             Contract.Requires(environment != null);
@@ -4529,6 +4544,7 @@ namespace BuildXL.Scheduler
                 PipExecutorCounter.CacheMissesForProcessMetadataFromHistoricMetadata,
                 PipExecutorCounter.CacheMissesForProcessOutputContent,
                 PipExecutorCounter.CacheMissesForProcessConfiguredUncacheable,
+                PipExecutorCounter.CacheMissesForProcessRunningIncrementalTool,
             };
         }
     }

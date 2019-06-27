@@ -66,5 +66,10 @@ namespace BuildXL.Scheduler
         /// Number of times a process pip was a miss due to being configured to always miss on cache lookup.
         /// </summary>
         MissForProcessConfiguredUncacheable = PipExecutorCounter.CacheMissesForProcessConfiguredUncacheable,
+
+        /// <summary>
+        /// Number of times a process pip was a miss due to running incremental tool.
+        /// </summary>
+        MissForRunningIncrementalTool = PipExecutorCounter.CacheMissesForProcessRunningIncrementalTool,
     }
 }

@@ -293,6 +293,8 @@ namespace BuildXL.Utilities.Tracing
         ScheduleFailAddPipDueToInvalidPreserveOutputWhitelist = 302,
         ScheduleFailAddPipDueToInvalidAllowPreserveOutputsFlag = 303,
 
+        ScheduleProcessRunIncrementalTool = 304,
+
         // Reserved = 306,
         // Reserved = 307,
         PipFailSymlinkCreation = 308,

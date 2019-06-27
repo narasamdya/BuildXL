@@ -4,6 +4,7 @@
 using BuildXL.Engine.Cache.Fingerprints;
 using BuildXL.Pips.Operations;
 using BuildXL.Utilities;
+using BuildXL.Utilities.Configuration;
 
 namespace BuildXL.Scheduler
 {
@@ -52,6 +53,14 @@ namespace BuildXL.Scheduler
         public override bool DisableCacheLookup()
         {
             return Process.DisableCacheLookup;
+        }
+
+        /// <inheritdoc />
+        public override bool RunIncrementalTool()
+        {
+            return Process.IncrementalTool
+                && Process.AllowPreserveOutputs 
+                && m_environment.Configuration.Sandbox.UnsafeSandboxConfiguration.PreserveOutputs != PreserveOutputsMode.Disabled;
         }
 
         /// <summary>

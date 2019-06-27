@@ -1827,7 +1827,7 @@ namespace BuildXL.Processes
                         if (!directoryOutputIds.Contains(directory.Path))
                         {
                             // Directories here represent inputs, we want to apply the timestamp faking logic
-                            var mask = ~FileAccessPolicy.AllowRealInputTimestamps;
+                            var mask = NoFakeTimestamp ? ~FileAccessPolicy.Deny: ~FileAccessPolicy.AllowRealInputTimestamps;
                             // Allow read accesses and reporting. Reporting is needed since these may be dynamic accesses and we need to cross check them
                             var values = FileAccessPolicy.AllowReadIfNonexistent | FileAccessPolicy.AllowRead | FileAccessPolicy.ReportAccess;
 
@@ -1911,7 +1911,7 @@ namespace BuildXL.Processes
                 // to it. Explicitly block this (no need to check if this is under a shared opaque, since otherwise
                 // it didn't have write access to begin with). Observe we already know this is not a rewrite since dynamic rewrites
                 // are not allowed by construction under shared opaques.
-                mask: ~FileAccessPolicy.AllowRealInputTimestamps & ~FileAccessPolicy.AllowWrite);
+                mask: (NoFakeTimestamp ? ~FileAccessPolicy.Deny : ~FileAccessPolicy.AllowRealInputTimestamps) & ~FileAccessPolicy.AllowWrite);
 
             allInputPathsUnderSharedOpaques.Add(path);
 
@@ -1931,7 +1931,7 @@ namespace BuildXL.Processes
                 m_fileAccessManifest.AddPath(
                         currentPath,
                         values: FileAccessPolicy.AllowRead | FileAccessPolicy.AllowReadIfNonexistent, // we don't need access reporting here
-                        mask: ~FileAccessPolicy.AllowRealInputTimestamps); // but block real timestamps
+                        mask: NoFakeTimestamp ? ~FileAccessPolicy.Deny : ~FileAccessPolicy.AllowRealInputTimestamps); // but block real timestamps
 
                 allInputPathsUnderSharedOpaques.Add(currentPath);
                 currentPath = currentPath.GetParent(m_pathTable);
@@ -2004,7 +2004,7 @@ namespace BuildXL.Processes
                 // to it. Explicitly block this, since we want inputs to not be written. Observe we already know 
                 // this is not a rewrite.
                 mask: m_excludeReportAccessMask &
-                      ~FileAccessPolicy.AllowRealInputTimestamps &
+                      (NoFakeTimestamp ? ~FileAccessPolicy.Deny : ~FileAccessPolicy.AllowRealInputTimestamps) &
                       (pathIsUnderSharedOpaque ? 
                           ~FileAccessPolicy.AllowWrite: 
                           FileAccessPolicy.MaskNothing)); 
@@ -3930,5 +3930,7 @@ namespace BuildXL.Processes
 
             return false;
         }
+
+        private bool NoFakeTimestamp => m_shouldPreserveOutputs && m_pip.IncrementalTool;
     }
 }

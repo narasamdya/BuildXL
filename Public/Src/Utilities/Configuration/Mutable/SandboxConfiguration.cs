@@ -49,6 +49,7 @@ namespace BuildXL.Utilities.Configuration.Mutable
             RetryOnAzureWatsonExitCode = false;
             EnsureTempDirectoriesExistenceBeforePipExecution = false;
             GlobalUnsafeUntrackedScopes = new List<AbsolutePath>();
+            PreserveOutputsForIncrementalTool = false;
         }
 
         /// <nodoc />
@@ -95,6 +96,7 @@ namespace BuildXL.Utilities.Configuration.Mutable
             RetryOnAzureWatsonExitCode = template.RetryOnAzureWatsonExitCode;
             EnsureTempDirectoriesExistenceBeforePipExecution = template.EnsureTempDirectoriesExistenceBeforePipExecution;
             GlobalUnsafeUntrackedScopes = pathRemapper.Remap(template.GlobalUnsafeUntrackedScopes);
+            PreserveOutputsForIncrementalTool = template.PreserveOutputsForIncrementalTool;
         }
 
         /// <inheritdoc />
@@ -213,7 +215,7 @@ namespace BuildXL.Utilities.Configuration.Mutable
         public bool KextEnableReportBatching { get; set; }
 
         /// <inheritdoc />
-        public uint KextThrottleCpuUsageBlockThresholdPercent { get; set;  }
+        public uint KextThrottleCpuUsageBlockThresholdPercent { get; set; }
 
         /// <inheritdoc />
         public uint KextThrottleCpuUsageWakeupThresholdPercent { get; set; }
@@ -243,6 +245,9 @@ namespace BuildXL.Utilities.Configuration.Mutable
         public List<AbsolutePath> GlobalUnsafeUntrackedScopes { get; set; }
 
         /// <inheritdoc /> 
-        IReadOnlyList<AbsolutePath> ISandboxConfiguration.GlobalUnsafeUntrackedScopes => GlobalUnsafeUntrackedScopes;        
+        IReadOnlyList<AbsolutePath> ISandboxConfiguration.GlobalUnsafeUntrackedScopes => GlobalUnsafeUntrackedScopes;
+
+        /// <inheritdoc /> 
+        public bool PreserveOutputsForIncrementalTool { get; set; }
     }
 }

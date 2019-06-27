@@ -39,5 +39,10 @@ namespace BuildXL.Scheduler
         /// Whether the pip is configured to miss on cache lookup
         /// </summary>
         public abstract bool DisableCacheLookup();
+
+        /// <summary>
+        /// Whether the pip runs a tool with incremental capability.
+        /// </summary>
+        public abstract bool RunIncrementalTool();
     }
 }

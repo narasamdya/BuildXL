@@ -388,6 +388,11 @@ namespace BuildXL.Scheduler
         /// </summary>
         CacheMissesForProcessConfiguredUncacheable,
 
+        /// <summary>
+        /// Number of times a process pip was a miss due to running incremental tool.
+        /// </summary>
+        CacheMissesForProcessRunningIncrementalTool,
+
         #endregion components of ProcessPipsExecutedDueToCacheMiss
 
         /// <summary>

@@ -1179,6 +1179,11 @@ namespace BuildXL.FrontEnd.Script.Ambients.Transformers
             if (Converter.ExtractOptionalBoolean(unsafeOptionsObjLit, m_unsafeAllowPreservedOutputs) == true)
             {
                 processBuilder.Options |= Process.Options.AllowPreserveOutputs;
+
+                if (context.FrontEndHost.Configuration.Sandbox.PreserveOutputsForIncrementalTool)
+                {
+                    processBuilder.Options |= Process.Options.IncrementalTool;
+                }
             }
 
             // UnsafeExecuteArguments.passThroughEnvironmentVariables

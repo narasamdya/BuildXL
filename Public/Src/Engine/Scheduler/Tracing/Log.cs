@@ -475,6 +475,15 @@ namespace BuildXL.Scheduler.Tracing
         internal abstract void ScheduleProcessConfiguredUncacheable(LoggingContext loggingContext, string pipDescription);
 
         [GeneratedEvent(
+            (ushort)EventId.ScheduleProcessRunIncrementalTool,
+            EventGenerators = EventGenerators.LocalOnly,
+            EventLevel = Level.Verbose,
+            Keywords = (int)Keywords.UserMessage,
+            EventTask = (ushort)Tasks.Scheduler,
+            Message = "[{pipDescription}] Pip executes a tool that should manage its own incremental behavior. No cache lookup will be performed.")]
+        internal abstract void ScheduleProcessRunIncrementalTool(LoggingContext loggingContext, string pipDescription);
+
+        [GeneratedEvent(
             (ushort)EventId.CacheDescriptorMissForContentFingerprint,
             EventGenerators = EventGenerators.LocalOnly,
             EventLevel = Level.Verbose,
