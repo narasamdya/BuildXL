@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.ContractsLight;
+using System.Drawing;
 using System.IO;
 using System.Security.AccessControl;
 using System.Text;
@@ -1252,6 +1253,20 @@ namespace BuildXL.Native.IO
             }
 
             return !string.IsNullOrWhiteSpace(substSource) && !string.IsNullOrWhiteSpace(substTarget);
+        }
+
+        /// <summary>
+        /// Gets subst drive and path from subst source and target.
+        /// </summary>
+        public static (string drive, string path) GetSubstDriveAndPath(string substSource, string substTarget)
+        {
+            Contract.Requires(Path.IsPathRooted(substSource));
+            Contract.Requires(Path.IsPathRooted(substTarget));
+
+            string substDrive = Path.GetPathRoot(substTarget).TrimEnd(Path.DirectorySeparatorChar);
+            string substPath = substTarget.TrimEnd(Path.DirectorySeparatorChar);
+
+            return (substDrive, substPath);
         }
 
         #endregion
