@@ -138,7 +138,7 @@ namespace Test.Tool.Analyzers
             ScheduleRunResult buildB = RunScheduler().AssertCacheMiss(pip.PipId);
 
             messages = new string[] { ArtifactToPrint(dir), ObservedInputType.AbsentPathProbe.ToString(), ObservedInputType.DirectoryEnumeration.ToString() };
-            
+
             RunAnalyzer(buildA, buildB).AssertPipMiss(pip, PipCacheMissType.MissForDescriptorsDueToStrongFingerprints, messages);
 
             // Strong fingerprint miss: Added new files to enumerated directory
@@ -147,13 +147,8 @@ namespace Test.Tool.Analyzers
             ScheduleRunResult buildC = RunScheduler().AssertCacheMiss(pip.PipId);
 
             messages = new string[] { ArtifactToPrint(dir), Path.GetFileName(ArtifactToPrint(addedFile)), Path.GetFileName(ArtifactToPrint(victimFile)) };
-            
-            RunAnalyzer(buildB, buildC).AssertPipMiss(
-                pip,
-                PipCacheMissType.MissForDescriptorsDueToStrongFingerprints,
-                ArtifactToPrint(dir),
-                Path.GetFileName(ArtifactToPrint(addedFile)),
-                Path.GetFileName(ArtifactToPrint(victimFile)));
+
+            RunAnalyzer(buildB, buildC).AssertPipMiss(pip, PipCacheMissType.MissForDescriptorsDueToStrongFingerprints, messages);
 
             // Strong fingerprint miss: Deleted file in enumerated directory
             File.Delete(ArtifactToPrint(victimFile));
@@ -164,7 +159,7 @@ namespace Test.Tool.Analyzers
             RunAnalyzer(buildC, buildD).AssertPipMiss(
                 pip,
                 PipCacheMissType.MissForDescriptorsDueToStrongFingerprints,
-                messages);
+                messages);;
         }
 
         [Fact]
@@ -360,7 +355,7 @@ namespace Test.Tool.Analyzers
             // Reset the graph and re-schedule the same pip but with an added command line arg
             ResetPipGraphBuilder();
 
-            var mismatchingPipBuilder = this.CreatePipBuilder(new Operation[]
+            var mismatchingPipBuilder = CreatePipBuilder(new Operation[]
             {
                 outOp
             });
@@ -426,8 +421,6 @@ namespace Test.Tool.Analyzers
                 ArtifactToPrint(dir),
                 ObservedInputType.AbsentPathProbe.ToString(),
                 ObservedInputType.DirectoryEnumeration.ToString());
-
-            result.AssertAnalyzerOutput(CacheMissAnalysisUtilities.RepeatedStrings.MissingDirectoryMembershipFingerprint);
         }
 
         /// <summary>

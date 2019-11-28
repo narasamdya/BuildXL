@@ -46,6 +46,44 @@ namespace BuildXL.Engine.Cache.Serialization
             Children = new LinkedList<JsonNode>();
         }
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public JsonNode(string name, string value, params JsonNode[] children)
+        {
+            Name = name;
+            Values.Add(value);
+            foreach (var child in children)
+            {
+                Children.AddLast(child);
+            }
+        }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public JsonNode(string name, params JsonNode[] children)
+        {
+            Name = name;
+            foreach (var child in children)
+            {
+                Children.AddLast(child);
+            }
+        }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public JsonNode(string name, string[] values, params JsonNode[] children)
+        {
+            Name = name;
+            Values.AddRange(values);
+            foreach (var child in children)
+            {
+                Children.AddLast(child);
+            }
+        }
+
         /// <inheritdoc />
         public override bool Equals(object obj)
         {
@@ -68,14 +106,14 @@ namespace BuildXL.Engine.Cache.Serialization
                 return false;
             }
 
-            if (this.Values.Count != other.Values.Count)
+            if (Values.Count != other.Values.Count)
             {
                 return false;
             }
 
-            for (int i = 0; i < this.Values.Count; ++i)
+            for (int i = 0; i < Values.Count; ++i)
             {
-                if (this.Values[i] != other.Values[i])
+                if (Values[i] != other.Values[i])
                 {
                     return false;
                 }
@@ -156,7 +194,7 @@ namespace BuildXL.Engine.Cache.Serialization
                             Parent = parentNode,
                             Name = reader.Value.ToString()
                         };
-                        parentNode.Children.AddFirst(currentNode);
+                        parentNode.Children.AddLast(currentNode);
                         break;
                     case JsonToken.String:
                         currentNode.Values.Add(reader.Value.ToString());
@@ -191,7 +229,7 @@ namespace BuildXL.Engine.Cache.Serialization
                 // If the root is being used to just point to a bunch of child nodes, skip printing it
                 if (string.IsNullOrEmpty(root.Name))
                 {
-                    for (var it = root.Children.Last; it != null; it = it.Previous)
+                    for (var it = root.Children.First; it != null; it = it.Next)
                     {
                         BuildStringHelper(it.Value, wr);
                     }
@@ -230,7 +268,7 @@ namespace BuildXL.Engine.Cache.Serialization
                         collectionWriter.Add(value);
                     }
 
-                    for (var it = n.Children.Last; it != null; it = it.Previous)
+                    for (var it = n.Children.First; it != null; it = it.Next)
                     {
                         BuildStringHelper(it.Value, collectionWriter);
                     }

@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics.ContractsLight;
 using System.IO;
 using BuildXL.Engine.Cache.Serialization;
+using Newtonsoft.Json.Linq;
 using static BuildXL.Scheduler.Tracing.FingerprintStoreReader;
 
 namespace BuildXL.Scheduler.Tracing
@@ -25,6 +26,9 @@ namespace BuildXL.Scheduler.Tracing
 
         /// <nodoc/>
         WeakFingerprintMismatch,
+
+        /// <nodoc/>
+        PathSetHashMismatch,
 
         /// <nodoc/>
         StrongFingerprintMismatch,
@@ -158,19 +162,11 @@ namespace BuildXL.Scheduler.Tracing
                 if (oldPipSession.FormattedSemiStableHash != newPipSession.FormattedSemiStableHash)
                 {
                     // Make trivial json so the print looks like the rest of the diff
-                    var oldNode = new JsonNode
-                    {
-                        Name = RepeatedStrings.FormattedSemiStableHashChanged
-                    };
-                    oldNode.Values.Add(oldPipSession.FormattedSemiStableHash);
-
-                    var newNode = new JsonNode
-                    {
-                        Name = RepeatedStrings.FormattedSemiStableHashChanged
-                    };
-                    newNode.Values.Add(newPipSession.FormattedSemiStableHash);
-
-                    WriteLine(JsonTree.PrintTreeDiff(oldNode, newNode), writer);
+                    var diff = new JProperty("SemiStableHash", 
+                        new JObject(
+                            new JProperty("Old", oldPipSession.FormattedSemiStableHash), 
+                            new JProperty("New", newPipSession.FormattedSemiStableHash)));
+                    WriteLine(new JObject(diff).ToString(), writer);
                 }
 
                 // Diff based off the actual fingerprints instead of the PipCacheMissType
@@ -189,10 +185,17 @@ namespace BuildXL.Scheduler.Tracing
                     WriteLine(JsonTree.PrintTreeDiff(oldPipSession.GetWeakFingerprintTree(), newPipSession.GetWeakFingerprintTree()), writer);
                     result = CacheMissAnalysisResult.WeakFingerprintMismatch;
                 }
+                else if (oldPipSession.PathSetHash != newPipSession.PathSetHash)
+                {
+                    // Comparing different path sets can give a nonsensical result.
+                    WriteLine($"PathSet", writer);
+                    WriteLine(oldPipSession.DiffPathSet(newPipSession).ToString(), writer);
+                    result = CacheMissAnalysisResult.PathSetHashMismatch;
+                }
                 else if (oldPipSession.StrongFingerprint != newPipSession.StrongFingerprint)
                 {
                     WriteLine("StrongFingerprint", writer);
-                    WriteLine(JsonTree.PrintTreeDiff(oldPipSession.GetStrongFingerprintTree(), newPipSession.GetStrongFingerprintTree()), writer);
+                    WriteLine(oldPipSession.DiffStrongFingerprint(newPipSession).ToString(), writer);
                     result = CacheMissAnalysisResult.StrongFingerprintMismatch;
                 }
                 else
@@ -237,7 +240,7 @@ namespace BuildXL.Scheduler.Tracing
             /// Formatted semi stable hash changed.
             /// </summary>
             public const string FormattedSemiStableHashChanged
-                = "FormattedSemiStableHash";
+                = "SemiStableHash";
         }
     }
 }
