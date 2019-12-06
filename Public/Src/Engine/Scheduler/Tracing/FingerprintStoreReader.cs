@@ -198,10 +198,7 @@ namespace BuildXL.Scheduler.Tracing
             /// <summary>
             /// Get weak fingerprint tree for the entry
             /// </summary>
-            public JsonNode GetWeakFingerprintTree()
-            {
-                return JsonTree.Deserialize(m_entry.WeakFingerprintToInputs.Value);
-            }
+            public JsonNode GetWeakFingerprintTree() => JsonTree.Deserialize(m_entry.WeakFingerprintToInputs.Value);
 
             /// <summary>
             /// Get strong fingerprint tree for the entry
@@ -231,7 +228,7 @@ namespace BuildXL.Scheduler.Tracing
                 // {
                 //   PathSetHash: { Old: old_path_set_hash, New: new_path_set_hash }
                 // }
-                result.Add(CreateChangedDiff("PathSetHash", PathSetHash, otherSession.PathSetHash));
+                AddPropertyIfNotNull(result, RenderSingleValueDiff("PathSetHash", PathSetHash, otherSession.PathSetHash));
 
                 JsonNode thisPathSetTree = GetPathSetTree();
                 JsonNode otherPathSetTree = otherSession.GetPathSetTree();
@@ -239,82 +236,28 @@ namespace BuildXL.Scheduler.Tracing
                 JsonNode thisUnsafeOption = JsonTree.FindNodeByName(thisPathSetTree, ObservedPathSet.Labels.UnsafeOptions);
                 JsonNode otherUnsafeOption = JsonTree.FindNodeByName(otherPathSetTree, ObservedPathSet.Labels.UnsafeOptions);
 
-                if (thisUnsafeOption.Values[0] != otherUnsafeOption.Values[0])
-                {
-                    // This is less ideal because we can't see the difference.
-                    // TODO: dump unsafe option data to the fingerprint store so that we can analyze the content.
-                    // {
-                    //   UnsafeOptions: { Old: old_bits, New: new_bits: }
-                    // }
-                    result.Add(CreateChangedDiff(ObservedPathSet.Labels.UnsafeOptions, thisUnsafeOption.Values[0], otherUnsafeOption.Values[0]));
-                }
+                // This is less ideal because we can't see the difference.
+                // TODO: dump unsafe option data to the fingerprint store so that we can analyze the content.
+                // {
+                //   UnsafeOptions: { Old: old_bits, New: new_bits: }
+                // }
+                AddPropertyIfNotNull(result, RenderSingleValueDiff(ObservedPathSet.Labels.UnsafeOptions, thisUnsafeOption.Values[0], otherUnsafeOption.Values[0]));
 
-                JProperty pathDiff = DiffObservedPaths(otherSession);
-
-                if (pathDiff != null)
-                {
-                    result.Add(pathDiff);
-                }
-
-                //JsonNode thisPathsNode = JsonTree.FindNodeByName(thisPathSetTree, ObservedPathSet.Labels.Paths);
-                //JsonNode otherPathsNode = JsonTree.FindNodeByName(otherPathSetTree, ObservedPathSet.Labels.Paths);
-
-                //var thisPathSetData = new Dictionary<string, ObservedInputData>();
-                //var otherPathSetData = new Dictionary<string, ObservedInputData>();
-                //traversePathSetPaths(thisPathsNode, thisPathSetData);
-                //traversePathSetPaths(otherPathsNode, otherPathSetData);
-
-                //bool hasDiff = ExtractKeyedDiff(
-                //    thisPathSetData,
-                //    otherPathSetData,
-                //    (thisData, otherData) => thisData.Equals(otherData),
-                //    out var added,
-                //    out var removed,
-                //    out var changed);
-
-                //if (hasDiff)
-                //{
-                //    // {
-                //    //   Paths: { 
-                //    //      Added  : [..paths..],
-                //    //      Removed: [..paths..],
-                //    //      Changed: {
-                //    //        path: { Old: ..., New: ... }
-                //    //      }: 
-                //    //   }
-                //    // }
-                //    result.Add(new JProperty(
-                //        ObservedPathSet.Labels.Paths,
-                //        RenderKeyedDiff(
-                //            thisPathSetData,
-                //            otherPathSetData,
-                //            added,
-                //            removed,
-                //            changed,
-                //            RenderPath,
-                //            (dataA, dataB) => dataA.DescribeDiffWithoutPath(dataB))));
-                //}
+                AddPropertyIfNotNull(result, DiffObservedPaths(otherSession));
 
                 JsonNode thisObsFileNameNode = JsonTree.FindNodeByName(thisPathSetTree, ObservedPathSet.Labels.ObservedAccessedFileNames);
                 JsonNode otherObsFileNameNode = JsonTree.FindNodeByName(otherPathSetTree, ObservedPathSet.Labels.ObservedAccessedFileNames);
 
-                bool hasDiff = ExtractDiff(thisObsFileNameNode.Values, otherObsFileNameNode.Values, out var addedFileNames, out var removedFileName);
+                bool hasDiff = ExtractUnorderedListDiff(thisObsFileNameNode.Values, otherObsFileNameNode.Values, out var addedFileNames, out var removedFileName);
 
                 if (hasDiff)
                 {
                     result.Add(new JProperty(
                         ObservedPathSet.Labels.ObservedAccessedFileNames,
-                        RenderDiff(addedFileNames, removedFileName, RenderPath)));
+                        RenderUnorderedListDiff(addedFileNames, removedFileName, RenderPath)));
                 }
 
                 return result;
-
-                //void traversePathSetPaths(
-                //    JsonNode node,
-                //    Dictionary<string, ObservedInputData> populatedData)
-                //{
-                //    TraversePathSetPaths(node, null, data => populatedData[data.Path] = data);
-                //}
             }
 
             /// <summary>
@@ -332,14 +275,9 @@ namespace BuildXL.Scheduler.Tracing
                 // {
                 //   StrongFingerprint: { Old: old_path_set_hash, New: new_path_set_hash }
                 // }
-                result.Add(CreateChangedDiff("StrongFingerprint", StrongFingerprint, otherSession.StrongFingerprint));
+                AddPropertyIfNotNull(result, RenderSingleValueDiff("StrongFingerprint", StrongFingerprint, otherSession.StrongFingerprint));
 
-                JProperty pathDiff = DiffObservedPaths(otherSession);
-
-                if (pathDiff != null)
-                {
-                    result.Add(pathDiff);
-                }
+                AddPropertyIfNotNull(result, DiffObservedPaths(otherSession));
 
                 return result;
             }
@@ -360,7 +298,7 @@ namespace BuildXL.Scheduler.Tracing
                 traversePathSetPaths(thisPathsNode, thisStrongFingerprintInputTree, thisPathSetData);
                 traversePathSetPaths(otherPathsNode, otherStrongFingerprintInputTree, otherPathSetData);
 
-                bool hasDiff = ExtractKeyedDiff(
+                bool hasDiff = ExtractUnorderedMapDiff(
                     thisPathSetData,
                     otherPathSetData,
                     (thisData, otherData) => thisData.Equals(otherData),
@@ -381,7 +319,7 @@ namespace BuildXL.Scheduler.Tracing
                     // }
                     return new JProperty(
                         ObservedPathSet.Labels.Paths,
-                        RenderKeyedDiff(
+                        RenderUnorderedMapDiff(
                             thisPathSetData,
                             otherPathSetData,
                             added,
@@ -420,11 +358,11 @@ namespace BuildXL.Scheduler.Tracing
                             return new JProperty(MembersLabel, $"{CacheMissAnalysisUtilities.RepeatedStrings.MissingDirectoryMembershipFingerprint} ({nameof(ObservedInputData.Hash)}: {otherChange.Hash})");
                         }
 
-                        hasDiff = ExtractDiff(thisMembers, otherMembers, out var addedMembers, out var removedMembers);
+                        hasDiff = ExtractUnorderedListDiff(thisMembers, otherMembers, out var addedMembers, out var removedMembers);
 
                         if (hasDiff)
                         {
-                            return new JProperty(MembersLabel, RenderDiff(addedMembers, removedMembers, RenderPath));
+                            return new JProperty(MembersLabel, RenderUnorderedListDiff(addedMembers, removedMembers, RenderPath));
                         }
                     }
 
@@ -440,7 +378,223 @@ namespace BuildXL.Scheduler.Tracing
                 }
             }
 
-            private static bool ExtractKeyedDiff<T>(
+            /// <summary>
+            /// Compares weak fingerprints.
+            /// </summary>
+            public JObject DiffWeakFingerprint(PipRecordingSession otherSession)
+            {
+                if (WeakFingerprint == otherSession.WeakFingerprint)
+                {
+                    return null;
+                }
+
+                JObject result = new JObject();
+
+                JsonNode weakFingerprintTree = GetWeakFingerprintTree();
+                JsonNode otherWeakFingerprintTree = otherSession.GetWeakFingerprintTree();
+
+                var weakFingerprintData = new Dictionary<string, JsonNode>();
+                var otherWeakFingerprintData = new Dictionary<string, JsonNode>();
+
+                JsonTree.VisitTree(weakFingerprintTree, wfNode => weakFingerprintData[wfNode.Name] = wfNode, recurse: false);
+                JsonTree.VisitTree(otherWeakFingerprintTree, wfNode => otherWeakFingerprintData[wfNode.Name] = wfNode, recurse: false);
+
+                var fields = new HashSet<string>(weakFingerprintData.Keys.Concat(otherWeakFingerprintData.Keys));
+
+                foreach (var field in fields)
+                {
+                    bool getFieldNode = weakFingerprintData.TryGetValue(field, out JsonNode fieldNode);
+                    bool getOtherFieldNode = otherWeakFingerprintData.TryGetValue(field, out JsonNode otherFieldNode);
+
+                    if (getFieldNode != getOtherFieldNode)
+                    {
+                        string fieldValue = getFieldNode 
+                            ? (fieldNode.Values != null && fieldNode.Values.Count == 1 
+                                ? fieldNode.Values[0] 
+                                : CacheMissAnalysisUtilities.RepeatedStrings.ExistentValue) 
+                            : CacheMissAnalysisUtilities.RepeatedStrings.UnspecifiedValue;
+                        string otherFieldValue = getOtherFieldNode 
+                            ? (otherFieldNode.Values != null && otherFieldNode.Values.Count == 1 
+                                ? otherFieldNode.Values[0] 
+                                : CacheMissAnalysisUtilities.RepeatedStrings.ExistentValue)
+                            : CacheMissAnalysisUtilities.RepeatedStrings.UnspecifiedValue;
+
+                        AddPropertyIfNotNull(result, RenderSingleValueDiff(field, fieldValue, otherFieldValue));
+                    }
+                    else if (getFieldNode && getOtherFieldNode)
+                    {
+                        Contract.Assert(fieldNode != null);
+                        Contract.Assert(otherFieldNode != null);
+
+                        AddPropertyIfNotNull(result, DiffWeakFingerprintField(fieldNode, otherFieldNode));
+                    }
+                }
+
+                return result;
+            }
+
+            private static JProperty DiffWeakFingerprintField(JsonNode fieldNode, JsonNode otherFieldNode)
+            {
+                Contract.Requires(fieldNode != null);
+                Contract.Requires(otherFieldNode != null);
+                Contract.Requires(fieldNode.Name == otherFieldNode.Name);
+
+                switch (fieldNode.Name)
+                {
+                    case nameof(Process.Dependencies):
+                    {
+                        var inputFileData = new Dictionary<string, InputFileData>();
+                        var otherInputFileData = new Dictionary<string, InputFileData>();
+                        populateInputFileData(fieldNode, inputFileData);
+                        populateInputFileData(otherFieldNode, otherInputFileData);
+                        return ExtractUnorderedMapDiff(
+                            inputFileData,
+                            otherInputFileData,
+                            (dOld, dNew) => dOld.Equals(dNew),
+                            out var added,
+                            out var removed,
+                            out var changed)
+                            ? new JProperty(fieldNode.Name, RenderUnorderedMapDiff(
+                                inputFileData,
+                                otherInputFileData,
+                                added,
+                                removed,
+                                changed,
+                                RenderPath,
+                                (dataA, dataB) => dataA.HashOrContent))
+                            : null;
+                    }
+
+                    case nameof(Process.FileOutputs):
+                    {
+                        var outputFileData = new Dictionary<string, OutputFileData>();
+                        var otherOutputFileData = new Dictionary<string, OutputFileData>();
+                        populateOutputFileData(fieldNode, outputFileData);
+                        populateOutputFileData(otherFieldNode, otherOutputFileData);
+                        return ExtractUnorderedMapDiff(
+                            outputFileData,
+                            otherOutputFileData,
+                            (dOld, dNew) => dOld.Equals(dNew),
+                            out var added,
+                            out var removed,
+                            out var changed)
+                            ? new JProperty(fieldNode.Name, RenderUnorderedMapDiff(
+                                outputFileData,
+                                otherOutputFileData,
+                                added,
+                                removed,
+                                changed,
+                                RenderPath,
+                                (dataA, dataB) => dataA.Attributes))
+                            : null;
+                    }
+
+                    case nameof(Process.EnvironmentVariables):
+                    {
+                        var envVarData = new Dictionary<string, EnvironmentVariableData>();
+                        var otherEnvVarData = new Dictionary<string, EnvironmentVariableData>();
+                        populateEnvironmentVariableData(fieldNode, envVarData);
+                        populateEnvironmentVariableData(otherFieldNode, otherEnvVarData);
+                        return ExtractUnorderedMapDiff(
+                            envVarData,
+                            otherEnvVarData,
+                            (dOld, dNew) => dOld.Equals(dNew),
+                            out var added,
+                            out var removed,
+                            out var changed)
+                            ? new JProperty(fieldNode.Name, RenderUnorderedMapDiff(
+                                envVarData,
+                                otherEnvVarData,
+                                added,
+                                removed,
+                                changed,
+                                k => k,
+                                (dataA, dataB) => dataA.Value))
+                            : null;
+                    }
+
+                    case nameof(Process.DirectoryDependencies):
+                    case nameof(Process.DirectoryOutputs):
+                    case nameof(Process.UntrackedPaths):
+                    case nameof(Process.UntrackedScopes):
+                    case nameof(Process.PreserveOutputWhitelist):
+                    case nameof(Process.SuccessExitCodes):
+                    case PipFingerprintField.Process.SourceChangeAffectedInputList:
+                    case nameof(Process.ChildProcessesToBreakawayFromSandbox):
+                    {
+                        var data = fieldNode.Values;
+                        var otherData = otherFieldNode.Values;
+                        return ExtractUnorderedListDiff(data, otherData, out var added, out var removed)
+                            ? new JProperty(fieldNode.Name, RenderUnorderedListDiff(added, removed, RenderPath))
+                            : null;
+                    }
+                    default:
+                        return RenderSingleValueDiff(fieldNode.Name, getSingleValueNode(fieldNode), getSingleValueNode(otherFieldNode));
+
+                }
+
+                string getSingleValueNode(JsonNode node) => 
+                    node.Values.Count > 0 
+                    ? node.Values[0] 
+                    : CacheMissAnalysisUtilities.RepeatedStrings.MissingValue;
+
+                void populateInputFileData(JsonNode dependencyNode, Dictionary<string, InputFileData> inputFileData)
+                {
+                    JsonTree.VisitTree(
+                        dependencyNode,
+                        node =>
+                        {
+                            string value = CacheMissAnalysisUtilities.RepeatedStrings.MissingValue;
+                            if (node.Values.Count > 0)
+                            {
+                                value = node.Values[0];
+                            }
+                            else if (node.Children.First != null
+                                && node.Children.First.Value.Name == PipFingerprintField.FileDependency.PathNormalizedWriteFileContent
+                                && node.Children.First.Value.Values.Count > 0)
+                            {
+                                value = node.Children.First.Value.Values[0];
+                            }
+
+                            inputFileData[node.Name] = new InputFileData(node.Name, value);
+                        },
+                        recurse: false);
+                }
+
+                void populateOutputFileData(JsonNode outputNode, Dictionary<string, OutputFileData> outputFileData)
+                {
+                    JsonTree.VisitTree(
+                        outputNode,
+                        node =>
+                        {
+                            string value = CacheMissAnalysisUtilities.RepeatedStrings.MissingValue;
+                            if (node.Children.First != null
+                                && node.Children.First.Value.Name == PipFingerprintField.FileOutput.Attributes
+                                && node.Children.First.Value.Values.Count > 0)
+                            {
+                                value = node.Children.First.Value.Values[0];
+                            }
+
+                            outputFileData[node.Name] = new OutputFileData(node.Name, value);
+                        },
+                        recurse: false);
+                }
+
+                void populateEnvironmentVariableData(JsonNode environmentVariableNode, Dictionary<string, EnvironmentVariableData> environmentVariableData)
+                {
+                    JsonTree.VisitTree(
+                        environmentVariableNode,
+                        node =>
+                        {
+                            environmentVariableData[node.Name] = new EnvironmentVariableData(
+                                node.Name,
+                                node.Values.Count > 0 ? node.Values[0] : CacheMissAnalysisUtilities.RepeatedStrings.MissingValue);
+                        },
+                        recurse: false);
+                }
+            }
+
+            private static bool ExtractUnorderedMapDiff<T>(
                 IReadOnlyDictionary<string, T> oldData, 
                 IReadOnlyDictionary<string, T> newData,
                 Func<T, T, bool> equalValue,
@@ -448,7 +602,7 @@ namespace BuildXL.Scheduler.Tracing
                 out IReadOnlyList<string> removed,
                 out IReadOnlyList<string> changed)
             {
-                bool hasDiff = ExtractDiff(oldData.Keys, newData.Keys, out added, out removed);
+                bool hasDiff = ExtractUnorderedListDiff(oldData.Keys, newData.Keys, out added, out removed);
                 List<string> mutableChanged = null;
 
                 foreach (var kvp in oldData)
@@ -469,7 +623,7 @@ namespace BuildXL.Scheduler.Tracing
                 return hasDiff || (changed != null && changed.Count > 0);
             }
 
-            private static bool ExtractDiff(
+            private static bool ExtractUnorderedListDiff(
                 IEnumerable<string> oldData,
                 IEnumerable<string> newData,
                 out IReadOnlyList<string> added,
@@ -491,7 +645,7 @@ namespace BuildXL.Scheduler.Tracing
                 return false;
             }
 
-            private static JObject RenderKeyedDiff<T>(
+            private static JObject RenderUnorderedMapDiff<T>(
                 IReadOnlyDictionary<string, T> oldData,
                 IReadOnlyDictionary<string, T> newData,
                 IReadOnlyList<string> added, 
@@ -501,7 +655,7 @@ namespace BuildXL.Scheduler.Tracing
                 Func<T, T, string> describeValueDiff,
                 Func<string, JProperty> extraDiffChange = null)
             {
-                JObject result = RenderDiff(added, removed, renderKey);
+                JObject result = RenderUnorderedListDiff(added, removed, renderKey);
 
                 JProperty changedProperty = null;
 
@@ -509,7 +663,7 @@ namespace BuildXL.Scheduler.Tracing
                 {
                     changedProperty = new JProperty(
                         "Changed",
-                        new JObject(changed.Select(c => CreateChangedDiff(
+                        new JObject(changed.Select(c => RenderSingleValueDiff(
                             renderKey(c),
                             describeValueDiff(oldData[c], newData[c]),
                             describeValueDiff(newData[c], oldData[c]),
@@ -534,7 +688,7 @@ namespace BuildXL.Scheduler.Tracing
                 return result;
             }
 
-            private static JObject RenderDiff(
+            private static JObject RenderUnorderedListDiff(
                 IReadOnlyList<string> added,
                 IReadOnlyList<string> removed,
                 Func<string, string> renderItem)
@@ -563,8 +717,13 @@ namespace BuildXL.Scheduler.Tracing
                 }
             }
 
-            private static JProperty CreateChangedDiff(string key, string oldValue, string newValue, Func<string, JProperty> extraDiff = null)
+            private static JProperty RenderSingleValueDiff(string key, string oldValue, string newValue, Func<string, JProperty> extraDiff = null)
             {
+                if (oldValue == newValue)
+                {
+                    return null;
+                }
+
                 var diff = new List<JProperty>
                 {
                     new JProperty("Old", oldValue),
@@ -583,6 +742,14 @@ namespace BuildXL.Scheduler.Tracing
             }
 
             private static string RenderPath(string path) => path;
+
+            private static void AddPropertyIfNotNull(JObject o, JProperty p)
+            {
+                if (p != null)
+                {
+                    o.Add(p);
+                }
+            }
 
             /// <summary>
             /// Path set hash inputs are stored separately from the strong fingerprint inputs.
@@ -636,6 +803,7 @@ namespace BuildXL.Scheduler.Tracing
                 // [4] "Paths":""
                 var pathSetNode = JsonTree.FindNodeByName(pathSetTree, ObservedPathSet.Labels.Paths);
                 JsonTree.EmancipateBranch(pathSetNode);
+                JsonNode currPathNode = null;
                 JsonNode currFlagNode = null;
                 JsonNode currRegexNode = null;
                 var observedInputIt = observedInputsNode.Children.First;
@@ -645,23 +813,17 @@ namespace BuildXL.Scheduler.Tracing
                     switch (child.Name)
                     {
                         case ObservedPathEntryConstants.Path:
-                            var currPathNode = child;
-                            // Switch from literal string "path" to actual file system path
-                            // [5'] "B:/out/objects/n/x/qbkexxlc8je93wycw7yrlw0a305n7k/xunit-out/CacheMissAnaAD836B23/3/obj/readonly/src_0":""
-                            currPathNode.Name = currPathNode.Values[0];
-                            // The name captures the node's value, so clear the values to avoid extraneous value comparison when diffing
-                            currPathNode.Values.Clear();
-                            JsonTree.ReparentBranch(currPathNode, parentPathNode);
+                            if (currPathNode != null)
+                            {
+                                mergePathSetNode(parentPathNode, currPathNode, currFlagNode, currRegexNode, observedInputIt.Value);
+                                observedInputIt = observedInputsNode.Children.First;
+                                currPathNode = null;
+                                currFlagNode = null;
+                                currRegexNode = null;
+                            }
 
-                            // [6'] "Flags":"IsDirectoryPath, DirectoryEnumeration, DirectoryEnumerationWithAllPattern"
-                            JsonTree.ReparentBranch(currFlagNode, currPathNode);
-                            // [7'] "EnumeratePatternRegex":"^.*$"
-                            JsonTree.ReparentBranch(currRegexNode, currPathNode);
-
-                            // [3'] "ObservedInput":"E:VSO0:E0C5007DC8CF2D331236F156F136C50CACE2A5D549CD132D9B44ABD1F13D50CC00"
-                            // [8] "Members":"[src_1, src_2]"
-                            ReparentObservedInput(observedInputIt.Value, currPathNode);
-                            observedInputIt = observedInputsNode.Children.First;
+                            currPathNode = child;
+                            JsonTree.EmancipateBranch(currPathNode);
                             break;
                         case ObservedPathEntryConstants.Flags:
                             // [6] "Flags":"IsDirectoryPath, DirectoryEnumeration, DirectoryEnumerationWithAllPattern"
@@ -678,6 +840,11 @@ namespace BuildXL.Scheduler.Tracing
                     }
                 }
 
+                if (currPathNode != null)
+                {
+                    mergePathSetNode(parentPathNode, currPathNode, currFlagNode, currRegexNode, observedInputIt.Value);
+                }
+
                 // Re-parent any other branches of the path set tree to the strong fingerprint tree
                 // so they are still in a full strong fingerprint tree comparison.
                 // We re-parent under parentPathNode because branches of pathSetTree are elements of PathSet
@@ -689,6 +856,26 @@ namespace BuildXL.Scheduler.Tracing
                 }
 
                 return strongFingerprintTree;
+
+                void mergePathSetNode(JsonNode parentNode, JsonNode pathNode, JsonNode flagNode, JsonNode regexNode, JsonNode observedInputNode)
+                {
+                    // Switch from literal string "path" to actual file system path
+                    // [5'] "B:/out/objects/n/x/qbkexxlc8je93wycw7yrlw0a305n7k/xunit-out/CacheMissAnaAD836B23/3/obj/readonly/src_0":""
+                    pathNode.Name = pathNode.Values[0];
+
+                    // The name captures the node's value, so clear the values to avoid extraneous value comparison when diffing
+                    pathNode.Values.Clear();
+                    JsonTree.ReparentBranch(pathNode, parentNode);
+
+                    // [6'] "Flags":"IsDirectoryPath, DirectoryEnumeration, DirectoryEnumerationWithAllPattern"
+                    JsonTree.ReparentBranch(flagNode, pathNode);
+                    // [7'] "EnumeratePatternRegex":"^.*$"
+                    JsonTree.ReparentBranch(regexNode, pathNode);
+
+                    // [3'] "ObservedInput":"E:VSO0:E0C5007DC8CF2D331236F156F136C50CACE2A5D549CD132D9B44ABD1F13D50CC00"
+                    // [8] "Members":"[src_1, src_2]"
+                    ReparentObservedInput(observedInputNode, pathNode);
+                }
             }
 
             /// <summary>
@@ -809,7 +996,7 @@ namespace BuildXL.Scheduler.Tracing
                 string hashMarker = null;
                 string hash = null;
 
-                var obIt = observedInputs == null ? null : observedInputs.Children.First;
+                var obIt = observedInputs?.Children.First;
 
                 for (var it = pathSetPathsNode.Children.First; it != null; it = it.Next)
                 {
@@ -909,6 +1096,96 @@ namespace BuildXL.Scheduler.Tracing
                             Hash == data.Hash ? null : Prefix(nameof(Hash), Hash) }).Where(s => !string.IsNullOrEmpty(s)));
 
                 private string Prefix(string prefix, string item) => string.IsNullOrEmpty(item) ? null : prefix + ": " + item;
+            }
+
+            private struct InputFileData : IEquatable<InputFileData>
+            {
+                public readonly string Path;
+                public readonly string HashOrContent;
+
+                public InputFileData(string path, string hashOrContent)
+                {
+                    Path = path;
+                    HashOrContent = hashOrContent;
+                }
+
+                public bool Equals(InputFileData other) => Path == other.Path && HashOrContent == other.HashOrContent;
+
+                public override bool Equals(object obj) => StructUtilities.Equals(this, obj);
+
+                public override int GetHashCode()
+                {
+                    return combine(hashCode(Path), hashCode(HashOrContent));
+
+                    int hashCode(string s) => s != null ? EqualityComparer<string>.Default.GetHashCode(s) : 0;
+                    int combine(int h1, int h2)
+                    {
+                        unchecked
+                        {
+                            return ((h1 << 5) + h1) ^ h2;
+                        }
+                    }
+                }
+            }
+
+            private struct OutputFileData : IEquatable<OutputFileData>
+            {
+                public readonly string Path;
+                public readonly string Attributes;
+
+                public OutputFileData(string path, string attributes)
+                {
+                    Path = path;
+                    Attributes = attributes;
+                }
+
+                public bool Equals(OutputFileData other) => Path == other.Path && Attributes == other.Attributes;
+
+                public override bool Equals(object obj) => StructUtilities.Equals(this, obj);
+
+                public override int GetHashCode()
+                {
+                    return combine(hashCode(Path), hashCode(Attributes));
+
+                    int hashCode(string s) => s != null ? EqualityComparer<string>.Default.GetHashCode(s) : 0;
+                    int combine(int h1, int h2)
+                    {
+                        unchecked
+                        {
+                            return ((h1 << 5) + h1) ^ h2;
+                        }
+                    }
+                }
+            }
+
+            private struct EnvironmentVariableData : IEquatable<EnvironmentVariableData>
+            {
+                public readonly string Name;
+                public readonly string Value;
+
+                public EnvironmentVariableData(string name, string value)
+                {
+                    Name = name;
+                    Value = value;
+                }
+
+                public bool Equals(EnvironmentVariableData other) => Name == other.Name && Value == other.Value;
+
+                public override bool Equals(object obj) => StructUtilities.Equals(this, obj);
+
+                public override int GetHashCode()
+                {
+                    return combine(hashCode(Name), hashCode(Value));
+
+                    int hashCode(string s) => s != null ? EqualityComparer<string>.Default.GetHashCode(s) : 0;
+                    int combine(int h1, int h2)
+                    {
+                        unchecked
+                        {
+                            return ((h1 << 5) + h1) ^ h2;
+                        }
+                    }
+                }
             }
 
             /// <summary>

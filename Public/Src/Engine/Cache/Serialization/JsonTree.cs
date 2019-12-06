@@ -157,7 +157,7 @@ namespace BuildXL.Engine.Cache.Serialization
     /// </summary>
     public static class JsonTree
     {
-        private static JsonDiffPatch s_jdp = null;
+        private static readonly JsonDiffPatch s_jdp = null;
 
         static JsonTree()
         {
@@ -419,6 +419,22 @@ namespace BuildXL.Engine.Cache.Serialization
 
                     // Make sure writer is fully closed and done writing before using the underlying string
                     return sbPool.Instance.ToString();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Visits tree.
+        /// </summary>
+        public static void VisitTree(JsonNode root, Action<JsonNode> processNode, bool recurse)
+        {
+            for (var it = root.Children.First; it != null; it = it.Next)
+            {
+                JsonNode node = it.Value;
+                processNode(node);
+                if (recurse)
+                {
+                    VisitTree(node, processNode, recurse);
                 }
             }
         }
